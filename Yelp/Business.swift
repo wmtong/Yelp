@@ -2,23 +2,24 @@
 //  Business.swift
 //  Yelp
 //
-//  Created by Timothy Lee on 4/23/15.
-//  Copyright (c) 2015 Timothy Lee. All rights reserved.
+//  Created by William Tong on 2/10/16.
+//  Copyright (c) 2016 William Tong. All rights reserved.
 //
 
+
 import UIKit
+import CoreLocation
 
 class Business: NSObject {
     let name: String?
     let address: String?
-    //let coordinate: NSDictionary?
-    var latitude: Double?
-    var longitude: Double?
     let imageURL: NSURL?
     let categories: String?
     let distance: String?
     let ratingImageURL: NSURL?
     let reviewCount: NSNumber?
+    let location: CLLocation?
+
     
     init(dictionary: NSDictionary) {
         name = dictionary["name"] as? String
@@ -30,36 +31,27 @@ class Business: NSObject {
             imageURL = nil
         }
         
-        latitude = 0
-        longitude = 0
         
         let location = dictionary["location"] as? NSDictionary
         var address = ""
-        if location != nil {
+        if location != nil
+        {
             let addressArray = location!["address"] as? NSArray
-            if addressArray != nil && addressArray!.count > 0 {
+            if addressArray != nil && addressArray!.count > 0
+            {
                 address = addressArray![0] as! String
             }
             
             let neighborhoods = location!["neighborhoods"] as? NSArray
-            if neighborhoods != nil && neighborhoods!.count > 0 {
-                if !address.isEmpty {
+            if neighborhoods != nil && neighborhoods!.count > 0
+            {
+                if !address.isEmpty
+                {
                     address += ", "
                 }
                 address += neighborhoods![0] as! String
             }
-            
-            let coordinateArray = location!["coordinate"]! as? NSArray
-            if coordinateArray != nil && coordinateArray!.count > 0 {
-                self.latitude = dictionary["location"]!["latitude"] as? Double
-                self.longitude = dictionary["location"]!["longitude"] as? Double
-            }
-            
         }
-        
-        
-        
-        
         self.address = address
         
         let categoriesArray = dictionary["categories"] as? [[String]]
@@ -90,7 +82,19 @@ class Business: NSObject {
         }
         
         reviewCount = dictionary["review_count"] as? NSNumber
+        
+        if let coordinate = location!["coordinate"] as? NSDictionary
+        {
+            let latitude = coordinate["latitude"] as? Double
+            let longitude = coordinate["longitude"] as? Double
+            self.location = CLLocation(latitude: latitude!, longitude: longitude!)
+        }
+        else
+        {
+            self.location = CLLocation(latitude: 37.785771, longitude: -122.406165)
+        }
     }
+    
     
     class func businesses(array array: [NSDictionary]) -> [Business] {
         var businesses = [Business]()
@@ -101,11 +105,8 @@ class Business: NSObject {
         return businesses
     }
     
-    class func searchWithTerm(term: String, offset: Int, completion: ([Business]!, NSError!) -> Void) {
-        YelpClient.sharedInstance.searchWithTerm(term, offset: offset, completion: completion)
-    }
-    
-    class func searchWithTerm(term: String, sort: YelpSortMode?, offset: Int?, categories: [String]?, deals: Bool?, completion: ([Business]!, NSError!) -> Void) -> Void {
-        YelpClient.sharedInstance.searchWithTerm(term, sort: sort, offset: offset, categories: categories, deals: deals, completion: completion)
+    class func searchWithTerm(term: String, limit: Int, offset: Int, sort: YelpSortMode?, categories: [String]?, deals: Bool?, completion: ([Business]!, NSError!) -> Void) -> Void
+    {
+        YelpClient.sharedInstance.searchWithTerm(term, limit: limit, offset: offset, sort: sort, categories: categories, deals: deals, completion: completion)
     }
 }

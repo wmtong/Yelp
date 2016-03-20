@@ -3,7 +3,7 @@
 //  Yelp
 //
 //  Created by William Tong on 2/10/16.
-//  Copyright © 2016 Timothy Lee. All rights reserved.
+//  Copyright © 2016 William Tong. All rights reserved.
 //
 import MapKit
 import UIKit
@@ -11,28 +11,47 @@ import CoreLocation
 
 class DetailsViewController: UIViewController, CLLocationManagerDelegate, MKMapViewDelegate{
 
-    @IBOutlet weak var mapView: MKMapView!
     var locationManager : CLLocationManager!
     var business: Business!
     
+    @IBOutlet weak var mapView: MKMapView!
+    @IBOutlet weak var businessImageView: UIImageView!
+    @IBOutlet weak var nameLabel: UILabel!
+    @IBOutlet weak var ratingImageView: UIImageView!
+    @IBOutlet weak var distanceLabel: UILabel!
+    @IBOutlet weak var addressLabel: UILabel!
+    @IBOutlet weak var reviewsCountLabel: UILabel!
+    @IBOutlet weak var categoriesLabel: UILabel!
+
     override func viewDidLoad() {
         super.viewDidLoad()
-
         mapView.delegate = self
-        
+        initProperties()
+        setLocation()
+    }
+    
+    
+    func initProperties()
+    {
+        businessImageView.setImageWithURL(business.imageURL!)
+        nameLabel.text = business.name!
+        ratingImageView.setImageWithURL(business.ratingImageURL!)
+        reviewsCountLabel.text = "\(business.reviewCount!) Reviews"
+        categoriesLabel.text = business.categories!
+        distanceLabel.text = business.distance!
+        addressLabel.text = business.address!
+        addAnnotationAtCoordinate(business.location!.coordinate, annotationTitle: business.name!, annotationSubtitle: business.address!)
+    }
+    
+    //location manager methods
+    func setLocation()
+    {
         locationManager = CLLocationManager()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         locationManager.distanceFilter = 200
         locationManager.requestWhenInUseAuthorization()
-
-
-        //var newAnnotation = MKPointAnnotation()
-        addAnnotationAtCoordinate( CLLocationCoordinate2D(latitude: business.latitude!, longitude: business.longitude!))
-        
     }
-    let regionRadius: CLLocationDistance = 1000
-    
     
     func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
         if status == CLAuthorizationStatus.AuthorizedWhenInUse {
@@ -40,45 +59,23 @@ class DetailsViewController: UIViewController, CLLocationManagerDelegate, MKMapV
         }
     }
     
-    var location: CLLocationCoordinate2D!
-    
     func locationManager(manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        let locValue:CLLocationCoordinate2D = manager.location!.coordinate
-        location = locValue
-        if let location = locations.first {
-            let span = MKCoordinateSpanMake(0.1, 0.1)
-            let region = MKCoordinateRegionMake(location.coordinate, span)
-            mapView.setRegion(region, animated: true)
+        if let location = locations.first
+            {
+                let span = MKCoordinateSpanMake(0.1, 0.1)
+                let region = MKCoordinateRegionMake(location.coordinate, span)
+                mapView.setRegion(region, animated: false)
         }
-        //addAnnotationAtCoordinate( CLLocationCoordinate2D(latitude: business.latitude!, longitude: business.longitude!))
-
-    }
-
-    func mapView(mapView: MKMapView, viewForAnnotation annotation: MKAnnotation) -> MKAnnotationView? {
-        let identifier = "customAnnotationView"
-        
-        // custom image annotation
-        var annotationView = mapView.dequeueReusableAnnotationViewWithIdentifier(identifier)
-        if (annotationView == nil) {
-            annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
-        }
-        else {
-            annotationView!.annotation = annotation
-        }
-        annotationView!.image = UIImage(data: NSData(contentsOfURL: business.imageURL!)!)
-        
-        return annotationView
     }
     
-    
-    func addAnnotationAtCoordinate(coordinate: CLLocationCoordinate2D) {
+    func addAnnotationAtCoordinate(coordinate: CLLocationCoordinate2D, annotationTitle: String, annotationSubtitle: String)
+    {
         let annotation = MKPointAnnotation()
         annotation.coordinate = coordinate
-        annotation.title = business.name
-        print(business.name)
-        print(annotation)
+        annotation.title = annotationTitle
+        annotation.subtitle = annotationSubtitle
         mapView.addAnnotation(annotation)
-        mapView.selectAnnotation(annotation, animated: true)
+        print(annotation)
     }
     
     override func didReceiveMemoryWarning() {

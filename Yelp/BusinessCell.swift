@@ -2,9 +2,10 @@
 //  BusinessCell.swift
 //  Yelp
 //
-//  Created by William Tong on 2/9/16.
-//  Copyright © 2016 Timothy Lee. All rights reserved.
+//  Created by William Tong on 2/10/16.
+//  Copyright (c) 2016 William Tong. All rights reserved.
 //
+
 
 import UIKit
 

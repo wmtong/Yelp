@@ -2,38 +2,55 @@
 //  BusinessesViewController.swift
 //  Yelp
 //
-//  Created by Timothy Lee on 4/23/15.
-//  Copyright (c) 2015 Timothy Lee. All rights reserved.
+//  Created by William Tong on 2/10/16.
+//  Copyright (c) 2016 William Tong. All rights reserved.
 //
 
 import UIKit
+import SVPullToRefresh
+import CoreLocation
 
-class BusinessesViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate, UIScrollViewDelegate {
+class BusinessesViewController: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate, UIScrollViewDelegate, CLLocationManagerDelegate  {
 
     var businesses: [Business]!
     var filteredBusinesses: [Business]!
     var filteredIndex: [Int]!
+    var categories: [String]!
     var searchBar: UISearchBar!
     
     @IBOutlet weak var tableView: UITableView!
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        var newdata: [String] = []
+        setLocation()
 
         tableView.delegate = self
         tableView.dataSource = self
         tableView.rowHeight = UITableViewAutomaticDimension
         tableView.estimatedRowHeight = 120
+        tableView.addInfiniteScrollingWithActionHandler(infiniteScroll)
         
         searchBar = UISearchBar()
         searchBar.sizeToFit()
         searchBar.delegate = self
         searchBar.placeholder = "Search"
         navigationItem.titleView = searchBar
-
+        setBusinesses(nil, offset: 0, categories: categories, deals: false)
         
-        Business.searchWithTerm("Restaurants", offset: 20, completion: { (businesses: [Business]!, error: NSError!) -> Void in
+        
+        self.navigationController?.navigationBar.barTintColor = UIColor(red: 196/255, green: 18/255, blue: 0, alpha: 1.0)
+        self.navigationController?.navigationBar.tintColor = UIColor.whiteColor()
+    }
+    
+    func setBusinesses(var term: String?, offset: Int, categories: [String]?, deals: Bool?)
+    {
+        var newdata: [String] = []
+        
+        if term == nil {
+            term = "Restaurants"
+        }
+        
+        Business.searchWithTerm(term!, limit: 20, offset: offset, sort: nil, categories: categories, deals: deals, completion: { (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses
             self.filteredBusinesses = businesses
             self.tableView.reloadData()
@@ -44,10 +61,9 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
             }
             self.data = newdata
         })
-
     }
     
-    
+    //search methods
     var data: [String]?
     var filteredData: [String]!
     
@@ -60,12 +76,14 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
             var tempIndexList: [Int] = []
             var tempBusinesses: [Business] = []
             
+            let lcSearch = searchText.lowercaseString
+            
             // Go through each element in data
             for var filterIndex = 0; filterIndex < data!.count; ++filterIndex {
                 
                 // For each that matches the filter
                 
-                if data![filterIndex].lowercaseString.containsString(searchText) {
+                if data![filterIndex].lowercaseString.containsString(lcSearch) {
                     // Add index to temporary list
                     tempTitleList.append(data![filterIndex])
                     tempIndexList.append(filterIndex)
@@ -88,24 +106,38 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
     
     func searchBarCancelButtonClicked(searchBar: UISearchBar) {
         searchBar.showsCancelButton = false
-        //searchBar.text = ""
+        searchBar.text = ""
         searchBar.resignFirstResponder()
     }
     
-    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        if(filteredBusinesses != nil){
+    //tableview methods
+    
+    func tableView(tableView: UITableView, numberOfRowsInSection section: Int) -> Int
+    {
+        if filteredBusinesses != nil
+        {
             return filteredBusinesses.count
-        }else{
+        }
+        else
+        {
             return 0
         }
     }
-        
+    
     func tableView(tableView: UITableView, cellForRowAtIndexPath indexPath: NSIndexPath) -> UITableViewCell
     {
         let cell = tableView.dequeueReusableCellWithIdentifier("BusinessCell", forIndexPath: indexPath) as! BusinessCell
+        
         cell.business = filteredBusinesses[indexPath.row]
         return cell
     }
+    
+    func tableView(tableView: UITableView, didSelectRowAtIndexPath indexPath: NSIndexPath)
+    {
+        tableView.deselectRowAtIndexPath(indexPath, animated: true)
+    }
+    
+    //scroll methods
     
     var isMoreDataLoading = false
     
@@ -124,46 +156,59 @@ class BusinessesViewController: UIViewController, UITableViewDelegate, UITableVi
         }
     }
     
-    
-    func loadMoreData() {
-        
-        // ... Create the NSURLRequest (myRequest) ...
-        
-        // Configure session so that completion handler is executed on main UI thread
-        let session = NSURLSession(
-            configuration: NSURLSessionConfiguration.defaultSessionConfiguration(),
-            delegate:nil,
-            delegateQueue:NSOperationQueue.mainQueue()
-        )
-        
-       // let task : NSURLSessionDataTask = session.dataTaskWithRequest(myRequest,
-         //   completionHandler: { (data, response, error) in
-                
-                // Update flag
-                self.isMoreDataLoading = false
-        
-        var newdata: [String] = []
-                // ... Use the new data to update the data source ...
-        Business.searchWithTerm("Restaurants",  offset: 20, completion: { (businesses: [Business]!, error: NSError!) -> Void in
-                    self.businesses = businesses
-                    //self.filteredBusinesses = businesses
-                    self.tableView.reloadData()
-                    for(var x=0; x<businesses.count; x++){
-                        self.filteredBusinesses.append(businesses[x])
-                        print(businesses[x].name!)
-                        print(businesses[x].address!)
-                    }
-                    //self.filteredBusinesses = businesses
-                    //self.data = newdata
-                })
-                
-                // Reload the tableView now that there is new data
-                self.tableView.reloadData()
-        //});
-      //  task.resume()
+    func loadMoreData()
+    {
+        var term = String()
+        if let text = searchBar.text
+        {
+            term = text
+        }
+        else
+        {
+            term = "Restaurants"
+        }
+        Business.searchWithTerm(term, limit: 20, offset: 5, sort: nil, categories: categories, deals: nil) { (businesses: [Business]!, error: NSError!) -> Void in
+            if businesses != nil
+            {
+                for business in businesses
+                {
+                    self.businesses.append(business)
+                }
+            }
+            for(var x=0; x<businesses.count; x++){
+                self.filteredBusinesses.append(businesses[x])
+                print(businesses[x].name!)
+                print(businesses[x].address!)
+            }
+        }
+        self.tableView.reloadData()
     }
     
-        
+    func infiniteScroll()
+    {
+        loadMoreData()
+        tableView.infiniteScrollingView.stopAnimating()
+    }
+    
+    
+    var locationManager : CLLocationManager!
+
+    func setLocation()
+    {
+        locationManager = CLLocationManager()
+        locationManager.delegate = self
+        locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.distanceFilter = 200
+        locationManager.requestWhenInUseAuthorization()
+    }
+    
+    func locationManager(manager: CLLocationManager, didChangeAuthorizationStatus status: CLAuthorizationStatus) {
+        if status == CLAuthorizationStatus.AuthorizedWhenInUse {
+            locationManager.startUpdatingLocation()
+        }
+    }
+    
+    
 /* Example of Yelp search with more search options specified
         Business.searchWithTerm("Restaurants", sort: .Distance, categories: ["asianfusion", "burgers"], deals: true) { (businesses: [Business]!, error: NSError!) -> Void in
             self.businesses = businesses

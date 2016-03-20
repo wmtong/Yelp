@@ -2,14 +2,16 @@
 //  YelpClient.swift
 //  Yelp
 //
-//  Created by Timothy Lee on 9/19/14.
-//  Copyright (c) 2014 Timothy Lee. All rights reserved.
+//  Created by William Tong on 2/10/16.
+//  Copyright (c) 2016 William Tong. All rights reserved.
 //
+
 
 import UIKit
 
 import AFNetworking
 import BDBOAuth1Manager
+import CoreLocation
 
 // You can register for Yelp API keys here: http://www.yelp.com/developers/manage_api_keys
 let yelpConsumerKey = "vxKwwcR_NMQ7WaEiQBK_CA"
@@ -52,41 +54,52 @@ class YelpClient: BDBOAuth1RequestOperationManager {
         self.requestSerializer.saveAccessToken(token)
     }
     
-    func searchWithTerm(term: String, offset: Int, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
-        return searchWithTerm(term, sort: nil, offset: 20, categories: nil, deals: nil, completion: completion)
-    }
-    
-    func searchWithTerm(term: String, sort: YelpSortMode?, offset: Int?, categories: [String]?, deals: Bool?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation {
+    func searchWithTerm(term: String, limit: Int, offset: Int, sort: YelpSortMode?, categories: [String]?, deals: Bool?, completion: ([Business]!, NSError!) -> Void) -> AFHTTPRequestOperation
+    {
         // For additional parameters, see http://www.yelp.com/developers/documentation/v2/search_api
-
-        // Default the location to San Francisco
-        var parameters: [String : AnyObject] = ["term": term, "ll": "37.785771,-122.406165"]
-
-        if sort != nil {
+        
+        var parameters: [String : AnyObject]
+        
+        // Default the location to San Francisco if user didn't allow location services, otherwise use user's location.
+        let locationManager = CLLocationManager()
+        let latitude = locationManager.location?.coordinate.latitude
+        let longitude = locationManager.location?.coordinate.longitude
+        
+        if CLLocationManager.locationServicesEnabled() && latitude != nil
+        {
+            parameters = ["term": term, "ll": "\(latitude!), \(longitude!)"]
+        }
+        else
+        {
+            parameters = ["term": term, "ll": "37.33,-122.03"]
+        }
+        
+        if sort != nil
+        {
             parameters["sort"] = sort!.rawValue
         }
         
-        if offset != nil {
-            parameters["offset"] = offset!
-        }
-        
-        if categories != nil && categories!.count > 0 {
+        if categories != nil && categories!.count > 0
+        {
             parameters["category_filter"] = (categories!).joinWithSeparator(",")
         }
         
-        if deals != nil {
+        if deals != nil
+        {
             parameters["deals_filter"] = deals!
         }
         
-        print(parameters)
+        parameters["offset"] = offset
         
         return self.GET("search", parameters: parameters, success: { (operation: AFHTTPRequestOperation!, response: AnyObject!) -> Void in
             let dictionaries = response["businesses"] as? [NSDictionary]
-            if dictionaries != nil {
+            if dictionaries != nil
+            {
                 completion(Business.businesses(array: dictionaries!), nil)
             }
-            }, failure: { (operation: AFHTTPRequestOperation?, error: NSError!) -> Void in
-                completion(nil, error)
+            },
+            failure:
+            { (operation: AFHTTPRequestOperation?, error: NSError!) -> Void in
         })!
     }
 }
